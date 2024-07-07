@@ -81,7 +81,7 @@ public class Main {
         }
         
         responseBodyStream.write(echoStr.getBytes("UTF-8"));
-        responseBodyStream.close(); // Close the stream to complete the gzip compression if used
+        responseBodyStream.close(); // Close the stream to finalize the gzip compression if used
         byte[] responseBody = byteArrayOutputStream.toByteArray();
         
         StringBuilder responseHeaders = new StringBuilder();
@@ -94,7 +94,16 @@ public class Main {
         }
         responseHeaders.append("\r\n");
         
-        httpResponse = responseHeaders.toString() + new String(responseBody, "UTF-8");
+        httpResponse = responseHeaders.toString();
+        // Write the response headers
+        ByteArrayInputStream headerStream = new ByteArrayInputStream(httpResponse.getBytes("UTF-8"));
+        byte[] headerBuffer = new byte[1024];
+        int bytesRead;
+        while ((bytesRead = headerStream.read(headerBuffer)) != -1) {
+          outputStream.write(headerBuffer, 0, bytesRead);
+        }
+        // Write the response body
+        outputStream.write(responseBody);
       } else if ("/user-agent".equals(urlPath)) {
         String userAgent = headers.get("User-Agent");
         httpResponse =
