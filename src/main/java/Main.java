@@ -31,6 +31,7 @@ public class Main {
   private static void handleClient(Socket clientSocket) {
     try {
       BufferedReader inputStream = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+      OutputStream outputStream = clientSocket.getOutputStream();
       // Read the request line
       String requestLine = inputStream.readLine();
       String httpMethod = requestLine.split(" ")[0];
@@ -43,14 +44,11 @@ public class Main {
       }
       // Extract the URL path from the request line.
       String urlPath = requestLine.split(" ")[1];
-      OutputStream outputStream = clientSocket.getOutputStream();
       // Write the HTTP response to the output stream.
-      String httpResponse = getHttpResponse(httpMethod, urlPath, headers, inputStream);
+      String httpResponse = getHttpResponse(httpMethod, urlPath, headers, inputStream, outputStream);
       System.out.println("Sending response: " + httpResponse);
+      // Write the response headers
       outputStream.write(httpResponse.getBytes("UTF-8"));
-      // Close the input and output streams.
-      inputStream.close();
-      outputStream.close();
     } catch (IOException e) {
       System.out.println("IOException: " + e.getMessage());
     } finally {
@@ -65,7 +63,7 @@ public class Main {
     }
   }
 
-  private static String getHttpResponse(String httpMethod, String urlPath, Map<String, String> headers, BufferedReader inputStream) throws IOException {
+  private static String getHttpResponse(String httpMethod, String urlPath, Map<String, String> headers, BufferedReader inputStream, OutputStream outputStream) throws IOException {
     String httpResponse;
     if ("GET".equals(httpMethod)) {
       if ("/".equals(urlPath)) {
@@ -94,14 +92,10 @@ public class Main {
         }
         responseHeaders.append("\r\n");
         
+        // Prepare the full response
         httpResponse = responseHeaders.toString();
         // Write the response headers
-        ByteArrayInputStream headerStream = new ByteArrayInputStream(httpResponse.getBytes("UTF-8"));
-        byte[] headerBuffer = new byte[1024];
-        int bytesRead;
-        while ((bytesRead = headerStream.read(headerBuffer)) != -1) {
-          outputStream.write(headerBuffer, 0, bytesRead);
-        }
+        outputStream.write(httpResponse.getBytes("UTF-8"));
         // Write the response body
         outputStream.write(responseBody);
       } else if ("/user-agent".equals(urlPath)) {
@@ -116,18 +110,23 @@ public class Main {
           byte[] fileContent = Files.readAllBytes(file.toPath());
           httpResponse =
               "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: " +
-              fileContent.length + "\r\n\r\n" + new String(fileContent);
+              fileContent.length + "\r\n\r\n";
+          outputStream.write(httpResponse.getBytes("UTF-8"));
+          outputStream.write(fileContent);
         } else {
           httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
+          outputStream.write(httpResponse.getBytes("UTF-8"));
         }
       } else {
         httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
+        outputStream.write(httpResponse.getBytes("UTF-8"));
       }
     } else if ("POST".equals(httpMethod) && urlPath.startsWith("/files/")) {
       String filename = urlPath.substring(7); // Extract the filename after "/files/"
       File file = new File(directory, filename);
       if (!file.getCanonicalPath().startsWith(new File(directory).getCanonicalPath())) {
         httpResponse = "HTTP/1.1 403 Forbidden\r\n\r\n";
+        outputStream.write(httpResponse.getBytes("UTF-8"));
       } else {
         // Get the length of the request body
         int contentLength = Integer.parseInt(headers.get("Content-Length"));
@@ -139,12 +138,15 @@ public class Main {
             writer.write(buffer, 0, bytesRead);
           }
           httpResponse = "HTTP/1.1 201 Created\r\n\r\n";
+          outputStream.write(httpResponse.getBytes("UTF-8"));
         } else {
           httpResponse = "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+          outputStream.write(httpResponse.getBytes("UTF-8"));
         }
       }
     } else {
       httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
+      outputStream.write(httpResponse.getBytes("UTF-8"));
     }
     return httpResponse;
   }
