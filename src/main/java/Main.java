@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
 
 public class Main {
   private static String directory;
@@ -96,4 +97,22 @@ class ClientHandler implements Runnable {
           output.write(response.getBytes());
           output.write(fileContent);
         } else {
-          Stri
+          String response = "HTTP/1.1 404 Not Found\r\n\r\n";
+          output.write(response.getBytes());
+        }
+      } else {
+        output.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
+      }
+
+      output.flush();
+    } catch (IOException e) {
+      System.out.println("IOException: " + e.getMessage());
+    } finally {
+      try {
+        clientSocket.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+}
