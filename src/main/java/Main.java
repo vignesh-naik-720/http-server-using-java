@@ -18,26 +18,23 @@ public class Main {
        // ensures that we don't run into 'Address already in use' errors
        serverSocket.setReuseAddress(true);
        clientSocket = serverSocket.accept(); // Wait for connection from client.
-       InputStream inputStream = clientSocket.getInputStream();
-       BufferedReader reader =
-           new BufferedReader(new InputStreamReader(inputStream));
-       String line = reader.readLine();
-       System.out.println(line);
-       String[] httpPath = line.split(" ", 0);
-       System.out.println(httpPath[1]);
-       OutputStream output = clientSocket.getOutputStream();
-       if (httpPath[1].equals("/")) {
-         output.write(("HTTP/1.1 200 OK\r\n\r\n").getBytes());
-       } else if (httpRequest.get("target").startsWith("/echo/")) {
-        String queryParam = httpRequest.get("target").split("/")[2];
-        out.write(
-            ("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " +
-             queryParam.length() + "\r\n\r\n" + queryParam)
-                .getBytes());
-      }  else {
-         output.write(("HTTP/1.1 404 Not Found\r\n\r\n").getBytes());
-       }
-       System.out.println("accepted new connection");
+       InputStream input = clientSocket.getInputStream();
+      BufferedReader reader = new BufferedReader(new InputStreamReader(input));
+      String line = reader.readLine();
+      String[] HttpRequest = line.split(" ", 0);
+      if (HttpRequest[1].equals("/")) {
+        clientSocket.getOutputStream().write(
+            "HTTP/1.1 200 OK\r\n\r\n".getBytes());
+      } else if (HttpRequest[1].startsWith("/echo/")) {
+        String msg = HttpRequest[1].substring(6);
+        String header = String.format(
+            "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
+            msg.length(), msg);
+        clientSocket.getOutputStream().write(header.getBytes());
+      } else {
+        clientSocket.getOutputStream().write(
+            "HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
+      }
      } catch (IOException e) {
        System.out.println("IOException: " + e.getMessage());
      }
