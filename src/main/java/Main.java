@@ -44,7 +44,7 @@ public class Main {
       String urlPath = requestLine.split(" ")[1];
       OutputStream outputStream = clientSocket.getOutputStream();
       // Write the HTTP response to the output stream.
-      String httpResponse = getHttpResponse(httpMethod, urlPath, headers);
+      String httpResponse = getHttpResponse(httpMethod, urlPath, headers, inputStream);
       System.out.println("Sending response: " + httpResponse);
       outputStream.write(httpResponse.getBytes("UTF-8"));
       // Close the input and output streams.
@@ -64,7 +64,7 @@ public class Main {
     }
   }
 
-  private static String getHttpResponse(String httpMethod, String urlPath, Map<String, String> headers) throws IOException {
+  private static String getHttpResponse(String httpMethod, String urlPath, Map<String, String> headers, BufferedReader inputStream) throws IOException {
     String httpResponse;
     if ("GET".equals(httpMethod)) {
       if ("/".equals(urlPath)) {
