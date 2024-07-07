@@ -28,7 +28,13 @@ public class Main {
        OutputStream output = clientSocket.getOutputStream();
        if (httpPath[1].equals("/")) {
          output.write(("HTTP/1.1 200 OK\r\n\r\n").getBytes());
-       } else {
+       } else if (httpRequest.get("target").startsWith("/echo/")) {
+        String queryParam = httpRequest.get("target").split("/")[2];
+        out.write(
+            ("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " +
+             queryParam.length() + "\r\n\r\n" + queryParam)
+                .getBytes());
+      }  else {
          output.write(("HTTP/1.1 404 Not Found\r\n\r\n").getBytes());
        }
        System.out.println("accepted new connection");
