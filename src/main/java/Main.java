@@ -2,6 +2,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class Main {
   private static String directory;
@@ -86,7 +87,7 @@ class ClientHandler implements Runnable {
                           "\r\n\r\n" + responseBody;
         output.write(finalStr.getBytes());
       } else if (str.length > 2 && str[1].equals("files")) {
-        String filePath = directory + File.separator + str[2];
+        String filePath = Paths.get(directory, str[2]).toString();
         File file = new File(filePath);
 
         if (file.exists() && !file.isDirectory()) {
