@@ -4,6 +4,7 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.zip.GZIPOutputStream;
 
 public class Main {
   private static String directory;
@@ -72,16 +73,28 @@ public class Main {
       } else if (urlPath.startsWith("/echo/")) {
         String echoStr = urlPath.substring(6); // Extract the string after "/echo/"
         String contentEncoding = headers.get("Accept-Encoding");
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        OutputStream responseBodyStream = byteArrayOutputStream;
+
         if (contentEncoding != null && contentEncoding.toLowerCase().contains("gzip")) {
-          // Add Content-Encoding: gzip header if gzip is supported
-          httpResponse =
-              "HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Type: text/plain\r\nContent-Length: " +
-              echoStr.length() + "\r\n\r\n" + echoStr;
-        } else {
-          httpResponse =
-              "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " +
-              echoStr.length() + "\r\n\r\n" + echoStr;
+          responseBodyStream = new GZIPOutputStream(byteArrayOutputStream);
         }
+        
+        responseBodyStream.write(echoStr.getBytes("UTF-8"));
+        responseBodyStream.close(); // Close the stream to complete the gzip compression if used
+        byte[] responseBody = byteArrayOutputStream.toByteArray();
+        
+        StringBuilder responseHeaders = new StringBuilder();
+        responseHeaders.append("HTTP/1.1 200 OK\r\n");
+        responseHeaders.append("Content-Type: text/plain\r\n");
+        responseHeaders.append("Content-Length: ").append(responseBody.length).append("\r\n");
+        
+        if (contentEncoding != null && contentEncoding.toLowerCase().contains("gzip")) {
+          responseHeaders.append("Content-Encoding: gzip\r\n");
+        }
+        responseHeaders.append("\r\n");
+        
+        httpResponse = responseHeaders.toString() + new String(responseBody, "UTF-8");
       } else if ("/user-agent".equals(urlPath)) {
         String userAgent = headers.get("User-Agent");
         httpResponse =
