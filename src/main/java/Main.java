@@ -3,7 +3,21 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Main {
+  private static String directory;
+
   public static void main(String[] args) {
+    // Parse command line arguments
+    for (int i = 0; i < args.length; i++) {
+      if ("--directory".equals(args[i]) && i + 1 < args.length) {
+        directory = args[i + 1];
+      }
+    }
+
+    if (directory == null) {
+      System.err.println("Directory not specified. Use --directory flag.");
+      System.exit(1);
+    }
+
     System.out.println("Logs from your program will appear here!");
 
     ServerSocket serverSocket = null;
@@ -14,7 +28,7 @@ public class Main {
 
       while (true) {
         Socket clientSocket = serverSocket.accept(); // Wait for connection from client.
-        new Thread(new ClientHandler(clientSocket)).start();
+        new Thread(new ClientHandler(clientSocket, directory)).start();
       }
     } catch (IOException e) {
       System.out.println("IOException: " + e.getMessage());
@@ -32,9 +46,11 @@ public class Main {
 
 class ClientHandler implements Runnable {
   private Socket clientSocket;
+  private String directory;
 
-  public ClientHandler(Socket socket) {
+  public ClientHandler(Socket socket, String directory) {
     this.clientSocket = socket;
+    this.directory = directory;
   }
 
   @Override
@@ -68,19 +84,16 @@ class ClientHandler implements Runnable {
                           + "Content-Length: " + responseBody.length() +
                           "\r\n\r\n" + responseBody;
         output.write(finalStr.getBytes());
-      } else {
-        output.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
-      }
+      } else if (str.length > 2 && str[1].equals("files")) {
+        String filePath = directory + File.separator + str[2];
+        File file = new File(filePath);
 
-      output.flush();
-    } catch (IOException e) {
-      System.out.println("IOException: " + e.getMessage());
-    } finally {
-      try {
-        clientSocket.close();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }
-  }
-}
+        if (file.exists() && !file.isDirectory()) {
+          byte[] fileContent = Files.readAllBytes(file.toPath());
+          String response = "HTTP/1.1 200 OK\r\n"
+                            + "Content-Type: application/octet-stream\r\n"
+                            + "Content-Length: " + fileContent.length + "\r\n\r\n";
+          output.write(response.getBytes());
+          output.write(fileContent);
+        } else {
+          Stri
