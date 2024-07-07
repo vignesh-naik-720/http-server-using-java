@@ -4,10 +4,11 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
+
 public class Main {
   private static String directory;
-  public static void main(String[] args) {
 
+  public static void main(String[] args) {
     // Parse command line arguments
     if (args.length > 1 && args[0].equals("--directory")) {
       directory = args[1];
@@ -16,8 +17,7 @@ public class Main {
     try (ServerSocket serverSocket = new ServerSocket(4221)) {
       serverSocket.setReuseAddress(true);
       while (true) {
-        Socket clientSocket =
-            serverSocket.accept(); // Wait for connection from client.
+        Socket clientSocket = serverSocket.accept(); // Wait for connection from client.
         System.out.println("accepted new connection");
         // Handle each client connection in a separate thread.
         new Thread(() -> handleClient(clientSocket)).start();
@@ -29,9 +29,7 @@ public class Main {
 
   private static void handleClient(Socket clientSocket) {
     try {
-      
-      BufferedReader inputStream = new BufferedReader(
-          new InputStreamReader(clientSocket.getInputStream()));
+      BufferedReader inputStream = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
       // Read the request line
       String requestLine = inputStream.readLine();
       String httpMethod = requestLine.split(" ")[0];
@@ -45,9 +43,8 @@ public class Main {
       // Extract the URL path from the request line.
       String urlPath = requestLine.split(" ")[1];
       OutputStream outputStream = clientSocket.getOutputStream();
-      /// Write the HTTP response to the output stream.
-      String httpResponse =
-          getHttpResponse(httpMethod, urlPath, headers, inputStream);
+      // Write the HTTP response to the output stream.
+      String httpResponse = getHttpResponse(httpMethod, urlPath, headers);
       System.out.println("Sending response: " + httpResponse);
       outputStream.write(httpResponse.getBytes("UTF-8"));
       // Close the input and output streams.
@@ -64,40 +61,34 @@ public class Main {
       } catch (IOException e) {
         System.out.println("IOException: " + e.getMessage());
       }
-      
     }
   }
-  private static String getHttpResponse(String httpMethod, String urlPath,
-                                        Map<String, String> headers,
-                                        BufferedReader inputStream)
-      throws IOException {
+
+  private static String getHttpResponse(String httpMethod, String urlPath, Map<String, String> headers) throws IOException {
     String httpResponse;
     if ("GET".equals(httpMethod)) {
       if ("/".equals(urlPath)) {
         httpResponse = "HTTP/1.1 200 OK\r\n\r\n";
       } else if (urlPath.startsWith("/echo/")) {
-        String echoStr =
-            urlPath.substring(6); // Extract the string after "/echo/"
+        String echoStr = urlPath.substring(6); // Extract the string after "/echo/"
         String contentEncoding = headers.get("Accept-Encoding");
-        if ("gzip".equalsIgnoreCase(contentEncoding)) {
+        if (contentEncoding != null && contentEncoding.toLowerCase().contains("gzip")) {
+          // Add Content-Encoding: gzip header if gzip is supported
           httpResponse =
               "HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Type: text/plain\r\nContent-Length: " +
               echoStr.length() + "\r\n\r\n" + echoStr;
         } else {
-          
           httpResponse =
               "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " +
               echoStr.length() + "\r\n\r\n" + echoStr;
         }
-        
       } else if ("/user-agent".equals(urlPath)) {
         String userAgent = headers.get("User-Agent");
         httpResponse =
             "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " +
             userAgent.length() + "\r\n\r\n" + userAgent;
       } else if (urlPath.startsWith("/files/")) {
-        String filename =
-            urlPath.substring(7); // Extract the filename after "/files/"
+        String filename = urlPath.substring(7); // Extract the filename after "/files/"
         File file = new File(directory, filename);
         if (file.exists()) {
           byte[] fileContent = Files.readAllBytes(file.toPath());
@@ -107,18 +98,13 @@ public class Main {
         } else {
           httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
         }
-        
       } else {
-        
         httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
       }
-      
     } else if ("POST".equals(httpMethod) && urlPath.startsWith("/files/")) {
-      String filename =
-          urlPath.substring(7); // Extract the filename after "/files/"
+      String filename = urlPath.substring(7); // Extract the filename after "/files/"
       File file = new File(directory, filename);
-      if (!file.getCanonicalPath().startsWith(
-              new File(directory).getCanonicalPath())) {
+      if (!file.getCanonicalPath().startsWith(new File(directory).getCanonicalPath())) {
         httpResponse = "HTTP/1.1 403 Forbidden\r\n\r\n";
       } else {
         // Get the length of the request body
@@ -127,8 +113,7 @@ public class Main {
         int bytesRead = inputStream.read(buffer, 0, contentLength);
         if (bytesRead == contentLength) {
           // Write the request body to the file
-          try (BufferedWriter writer =
-                   new BufferedWriter(new FileWriter(file))) {
+          try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
             writer.write(buffer, 0, bytesRead);
           }
           httpResponse = "HTTP/1.1 201 Created\r\n\r\n";
